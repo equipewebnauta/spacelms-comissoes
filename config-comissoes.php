@@ -1,9 +1,16 @@
 
+
+
+
+
+
+
+
 /**
  * 💰 Sistema de Comissões WPLMS (Administração Completa)
  * 
  * Autor: Miguel Cezar Ferreira
- * Data: 02/12/2025
+ * Data: 09/12/2025
  * 
  * Descrição:
  * Este módulo implementa um sistema completo de **Gestão de Comissões do WPLMS**, permitindo
@@ -37,7 +44,7 @@
  *      • Observações
  * 
  * 🔍 Como funciona o cálculo da comissão:
- * - Obtém todos os cursos cadastrados como “certificados”.
+ * - Obtém todos os cursos cadastrados 
  * - Para cada curso:
  *      • Identifica o instrutor responsável (post_author).
  *      • Acessa o produto WooCommerce vinculado ao curso via meta "vibe_product".
@@ -107,18 +114,6 @@
 
 
 
-add_action('admin_menu', function() {
-    add_menu_page(
-        'Comissões WPLMS',
-        'Comissões',
-        'manage_options',
-        'wplms-commissions',
-        'wplms_commissions_admin_page',
-        'dashicons-money-alt',
-        55
-    );
-});
-
 
 
 function wplms_commissions_admin_page() {
@@ -137,14 +132,14 @@ function wplms_commissions_admin_page() {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
-        .wplms-container { display:flex; flex-direction:column; gap:30px; width:100%; }
-        .wplms-card { border-radius:12px; padding:20px; background:#fff; }
+        .wplms-container { display:flex; flex-direction:column; gap:30px; width:98%; }
+        .wplms-card { border-radius:12px; background:#fff; }
         .table-responsive { border-radius:12px; overflow:hidden; }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
     </style>';
 
     echo '<div class="container-fluid mt-4 wplms-container">';
-    echo '<div class="wplms-card"><h1 class="fw-bold">📊 Comissões dos Instrutores - WPLMS</h1></div>';
+    echo '<div class="wplms-card shadow-sm p-4 mb-12 full-card"><h1 class="fw-bold mb-3">📊 Comissões dos Instrutores</h1><p>Este módulo implementa um sistema completo de Gestão de Comissões, permitindo administração centralizada de taxas individuais, pagamentos, histórico, relatórios e controle detalhado de vendas e faturamento de cursos vinculados a sua Plataforma. Ele oferece ao administrador ferramentas avançadas para visualizar cursos, editar taxas de comissão, registrar pagamentos, consultar o histórico completo de remunerações e aplicar alterações em massa de forma simples e segura.</p><small class="text-muted d-block mt-2">OBS: Esse é um sistema somente de Gestão e Registro, nenhum pagamento de comissão é feito aqui, só controle!</small></div>';
 
     /* -------------------- PROCESSAMENTO DE POSTS -------------------- */
     // todas as ações verificam nonce
@@ -310,7 +305,7 @@ function wplms_commissions_admin_page() {
     $filter_status     = isset($_GET['status'])     ? sanitize_text_field($_GET['status'])     : '';
 
     echo '
-    <div class="wplms-card mb-3">
+    <div class="wplms-card mb-3 shadow-sm p-4 full-card">
         <h4 class="fw-bold mb-3">🔍 Filtros</h4>
 
         <form method="get" class="row g-3 align-items-end">
@@ -341,9 +336,9 @@ function wplms_commissions_admin_page() {
         </form>
     </div>';
 
-    echo '<div class="wplms-card">
-            <h3>🎓 Cursos da categoria <strong>Certificados</strong></h3>
-        </div>';
+//     echo '<div class="wplms-card">
+//             <h3>🎓 Cursos</h3>
+//         </div>';
 
     /* -------------------- QUERY -------------------- */
     $per_page = 20;
@@ -353,14 +348,8 @@ function wplms_commissions_admin_page() {
         'post_type'      => 'course',
         'posts_per_page' => $per_page,
         'paged'          => $paged,
-        'post_status'    => 'publish',
-        'tax_query'      => [
-            [
-                'taxonomy' => 'course-cat',
-                'field'    => 'slug',
-                'terms'    => 'certificados',
-            ],
-        ],
+        'post_status'    => 'publish'
+       
     ];
 
     if ($filter_course !== '') {
@@ -396,7 +385,7 @@ function wplms_commissions_admin_page() {
     <input type="hidden" name="wplms_nonce" value="' . esc_attr($current_nonce) . '">
     <div class="table-responsive shadow">
         <table class="table table-striped table-hover align-middle mb-0">
-            <thead class="table-dark">
+            <thead class="table-dark p-3">
                 <tr>
                     <th><input type="checkbox" id="select_all"></th>
                     <th>Instrutor</th>
@@ -715,7 +704,7 @@ function wplms_commissions_admin_page() {
  * 📊 Exportação de Ranking de Instrutores (WPLMS + WooCommerce)
  * 
  * Autor: Miguel Cezar Ferreira
- * Data: 02/12/2025
+ * Data: 09/12/2025
  * 
  * Descrição:
  * Este módulo implementa um sistema completo de **Ranking de Instrutores**, capaz de exibir,
@@ -793,125 +782,217 @@ function wplms_commissions_admin_page() {
 add_action('wp_ajax_baixar_planilha_ranking_instructors', 'baixar_planilha_ranking_instructors');
 add_action('wp_ajax_nopriv_baixar_planilha_ranking_instructors', 'baixar_planilha_ranking_instructors');
 
-/**
- * Endpoint que gera e envia o XLSX com uma aba por instrutor.
- */
 function baixar_planilha_ranking_instructors() {
-    // Coletar dados (reutiliza a função abaixo)
     $dados = wplms_coletar_dados_instrutores();
 
-    // Tenta carregar PhpSpreadsheet (procura autoload no wp-content/vendor ou plugin/vendor)
-    if (!class_exists('\PhpOffice\PhpSpreadsheet\Spreadsheet')) {
-        // tentativa padrão (wp-content/vendor)
-        if (file_exists(WP_CONTENT_DIR . '/vendor/autoload.php')) {
-            require_once WP_CONTENT_DIR . '/vendor/autoload.php';
-        } elseif (file_exists( WP_PLUGIN_DIR . '/vendor/autoload.php')) {
-            require_once WP_PLUGIN_DIR . '/vendor/autoload.php';
-        }
-    }
+    $tempDir = sys_get_temp_dir() . '/xlsx_' . uniqid();
+    mkdir($tempDir);
+    mkdir($tempDir . '/_rels');
+    mkdir($tempDir . '/xl');
+    mkdir($tempDir . '/xl/_rels');
+    mkdir($tempDir . '/xl/worksheets');
 
-    if (!class_exists('\PhpOffice\PhpSpreadsheet\Spreadsheet')) {
-        // Se não está disponível, informar claramente
-        wp_die('<strong>PhpSpreadsheet não está disponível.</strong><br>Instale <code>phpoffice/phpspreadsheet</code> via Composer (por exemplo: <code>composer require phpoffice/phpspreadsheet</code>) no diretório do seu plugin ou em <code>wp-content/vendor</code>.');
-    }
+    //------------------------------------------------------------
+    // 1. [Content_Types].xml
+    //------------------------------------------------------------
+    $content =
+        '<?xml version="1.0" encoding="UTF-8"?>
+        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+            <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+            <Default Extension="xml" ContentType="application/xml"/>
+            <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+    ';
 
-    // Agora podemos gerar a planilha
-    $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-    // remover aba padrão
-    $sheetCount = $spreadsheet->getSheetCount();
-    for ($i = 0; $i < $sheetCount; $i++) {
-        $spreadsheet->removeSheetByIndex(0);
-    }
-
-    // Criar abas por instrutor
+    $sheetId = 1;
     foreach ($dados as $instructor_id => $info) {
-        // Nome de folha: máximo 31 chars e sem caracteres inválidos
-        $safe_name = preg_replace('/[:\\\\\/\?\*\[\]]+/', '_', $info['name']);
-        $safe_name = mb_substr($safe_name, 0, 31);
+        $content .= '<Override PartName="/xl/worksheets/sheet' . $sheetId . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        $sheetId++;
+    }
 
-        $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $safe_name);
-        $spreadsheet->addSheet($sheet);
+    $content .= '</Types>';
+
+    file_put_contents($tempDir . '/[Content_Types].xml', $content);
+
+
+    //------------------------------------------------------------
+    // 2. _rels/.rels
+    //------------------------------------------------------------
+    $rels =
+        '<?xml version="1.0" encoding="UTF-8"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+            <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+        </Relationships>';
+
+    file_put_contents($tempDir . '/_rels/.rels', $rels);
+
+
+    //------------------------------------------------------------
+    // 3. xl/workbook.xml
+    //------------------------------------------------------------
+    $sheetsXML = "";
+    $sheetId = 1;
+
+    foreach ($dados as $instructor_id => $info) {
+        $safeName = preg_replace('/[:\\\\\\/\\?\\*\\[\\]]+/', '_', $info['name']);
+        $safeName = mb_substr($safeName, 0, 31);
+        $sheetsXML .= '<sheet name="' . htmlspecialchars($safeName) . '" sheetId="' . $sheetId . '" r:id="rId' . $sheetId . '"/>';
+        $sheetId++;
+    }
+
+    $workbook =
+        '<?xml version="1.0" encoding="UTF-8"?>
+        <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+                  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+            <sheets>' . $sheetsXML . '</sheets>
+        </workbook>';
+
+    file_put_contents($tempDir . '/xl/workbook.xml', $workbook);
+
+
+    //------------------------------------------------------------
+    // 4. xl/_rels/workbook.xml.rels
+    //------------------------------------------------------------
+    $relsSheets = "";
+    $sheetId = 1;
+
+    foreach ($dados as $instructor_id => $info) {
+        $relsSheets .= '<Relationship Id="rId' . $sheetId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $sheetId . '.xml"/>';
+        $sheetId++;
+    }
+
+    $relsWorkbook =
+        '<?xml version="1.0" encoding="UTF-8"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+            ' . $relsSheets . '
+        </Relationships>';
+
+    file_put_contents($tempDir . '/xl/_rels/workbook.xml.rels', $relsWorkbook);
+
+
+    //------------------------------------------------------------
+    // 5. Criar as abas (worksheets)
+    //------------------------------------------------------------
+    $sheetId = 1;
+
+    foreach ($dados as $instructor_id => $info) {
+        $rowsXML = "";
 
         // Cabeçalho
-        $sheet->setCellValue('A1', 'Curso');
-        $sheet->setCellValue('B1', 'Vendas');
-        $sheet->setCellValue('C1', 'Faturamento');
-        $sheet->setCellValue('D1', 'Taxa (%)');
-        $sheet->setCellValue('E1', 'Comissão');
+        $rowsXML .= rowXML(1, ['Curso', 'Vendas', 'Faturamento', 'Taxa (%)', 'Comissão']);
 
-        $row = 2;
-        $total_faturado = 0;
-        $total_comissao = 0;
+        $r = 2;
 
-        foreach ($info['courses'] as $course_id => $course) {
+        foreach ($info['courses'] as $course) {
             if ($course['sales'] <= 0) continue;
 
-            $sheet->setCellValue("A{$row}", $course['name']);
-            $sheet->setCellValue("B{$row}", (int)$course['sales']);
-            $sheet->setCellValue("C{$row}", (float)$course['amount']);
-            $sheet->setCellValue("D{$row}", (float)$course['commission_rate']);
-            $sheet->setCellValue("E{$row}", (float)$course['commission_total']);
+            $rowsXML .= rowXML($r, [
+                $course['name'],
+                $course['sales'],
+                $course['amount'],
+                $course['commission_rate'],
+                $course['commission_total'],
+            ]);
 
-            $total_faturado += (float)$course['amount'];
-            $total_comissao += (float)$course['commission_total'];
-            $row++;
+            $r++;
         }
 
-        // Totais abaixo dos cursos (linha em branco antes)
-        if ($row === 2) {
-            // nenhum curso com vendas, escreve uma linha dizendo "Nenhuma venda"
-            $sheet->setCellValue("A{$row}", 'Nenhuma venda');
-            $row++;
+        if ($r == 2) {
+            $rowsXML .= rowXML(2, ['Nenhuma venda']);
         }
 
-        $row++; // linha em branco
-        $sheet->setCellValue("A{$row}", 'Total Faturado:');
-        $sheet->setCellValue("B{$row}", (float)$total_faturado);
+        $sheet =
+            '<?xml version="1.0" encoding="UTF-8"?>
+            <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                <sheetData>' . $rowsXML . '</sheetData>
+            </worksheet>';
 
-        $row++;
-        $sheet->setCellValue("A{$row}", 'Total Comissão:');
-        $sheet->setCellValue("B{$row}", (float)$total_comissao);
+        file_put_contents($tempDir . '/xl/worksheets/sheet' . $sheetId . '.xml', $sheet);
 
-        // Formatação numérica (opcional, deixa como número)
-        $sheet->getStyle("B2:B{$row}")->getNumberFormat()->setFormatCode('#,##0');
-        $sheet->getStyle("C2:C{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle("E2:E{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheetId++;
     }
 
-    // Definir aba ativa para a primeira (se existir)
-    if ($spreadsheet->getSheetCount() > 0) {
-        $spreadsheet->setActiveSheetIndex(0);
-    }
+    //------------------------------------------------------------
+    // Criar ZIP (XLSX)
+    //------------------------------------------------------------
+    $zipPath = tempnam(sys_get_temp_dir(), 'xlsx');
+    $zip = new ZipArchive();
+    $zip->open($zipPath, ZipArchive::OVERWRITE);
 
-    // Enviar para download
-    $filename = 'ranking-instrutores-' . date('Y-m-d_Hi') . '.xlsx';
+    addFilesToZip($tempDir, $zip);
+    $zip->close();
 
-    // Cabeçalhos
+    //------------------------------------------------------------
+    // Enviar arquivo
+    //------------------------------------------------------------
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
+    header('Content-Disposition: attachment; filename="ranking-instrutores.xlsx"');
+    header('Content-Length: ' . filesize($zipPath));
 
-    $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-    $writer->save("php://output");
+    readfile($zipPath);
+    unlink($zipPath);
+    deleteDir($tempDir);
     exit;
 }
+
+/* Helpers */
+function rowXML($rowNum, $values) {
+    $cells = "";
+    $col = 1;
+
+    foreach ($values as $val) {
+        $coord = colLetter($col) . $rowNum;
+        $cells .= '<c r="' . $coord . '" t="inlineStr"><is><t>' . htmlspecialchars($val) . '</t></is></c>';
+        $col++;
+    }
+
+    return '<row r="' . $rowNum . '">' . $cells . '</row>';
+}
+
+function colLetter($num) {
+    $letter = '';
+    while ($num > 0) {
+        $num--;
+        $letter = chr(65 + ($num % 26)) . $letter;
+        $num = intval($num / 26);
+    }
+    return $letter;
+}
+
+function addFilesToZip($dir, &$zip, $base = '') {
+    foreach (scandir($dir) as $item) {
+        if ($item === '.' || $item === '..') continue;
+
+        $path = "$dir/$item";
+        $local = ltrim("$base/$item", '/');
+
+        if (is_dir($path)) {
+            addFilesToZip($path, $zip, $local);
+        } else {
+            $zip->addFile($path, $local);
+        }
+    }
+}
+
+function deleteDir($dir) {
+    foreach (scandir($dir) as $object) {
+        if ($object === '.' || $object === '..') continue;
+        $path = $dir . '/' . $object;
+        if (is_dir($path)) deleteDir($path); else unlink($path);
+    }
+    rmdir($dir);
+}
+
 
 
 // === 2) Função que coleta os dados (reaproveita exatamente a lógica original) ===
 function wplms_coletar_dados_instrutores() {
     global $wpdb;
 
-    // Buscar cursos da categoria certificados
+    // Buscar cursos 
     $courses = get_posts([
         'post_type'      => 'course',
-        'posts_per_page' => -1,
-        'tax_query'      => [
-            [
-                'taxonomy' => 'course-cat',
-                'field'    => 'slug',
-                'terms'    => 'certificados',
-            ],
-        ],
+        'posts_per_page' => -1
+        
     ]);
 
     $instructor_data = [];
@@ -1217,4 +1298,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 ';
-} 
+} // fim da função
+
+
